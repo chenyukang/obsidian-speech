@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.1",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "obsidian-sayit",
+	"version": "0.0.1",
+	"description": "A Obsidian plugin to speak out your content",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

@@ -1,5 +1,5 @@
 {
-	"name": "obsidian-sayit",
+	"name": "obsidian-speech",
 	"version": "0.0.1",
 	"description": "A Obsidian plugin to speak out your content",
 	"main": "main.js",

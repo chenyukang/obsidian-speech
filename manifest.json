@@ -1,6 +1,6 @@
 {
-	"id": "obsidian-sayit",
-	"name": "Obsidian SayIt plugin",
+	"id": "obsidian-speech",
+	"name": "Obsidian Speech plugin",
 	"version": "0.0.1",
 	"minAppVersion": "0.12.0",
 	"description": "A Obsidian plugin, text for speech",

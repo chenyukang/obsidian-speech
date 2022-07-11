@@ -11,10 +11,12 @@ import {
 
 interface LanguageTranslatorSettings {
 	defaultLanguage: string;
+	followCursor: boolean;
 }
 
 const DEFAULT_SETTINGS: LanguageTranslatorSettings = {
-	defaultLanguage: "Microsoft David - English (United States)"
+	defaultLanguage: "Microsoft David - English (United States)",
+	followCursor: true,
 };
 
 
@@ -50,7 +52,7 @@ export default class LanguageTranslator extends Plugin {
 	cleanUpText = (text: string) => {
 		let res = text.replace(/\[([^\[\]]*)\]\((.*?)\)/gm, '$1');
 		//remove # from the beginning of the line
-		res = res.replace(/^#/gm, '');
+		res = res.replace(/#/g, '');
 		//remove http url from text
 		res = res.replace(/\(http(.*?)\)/gm, '');
 		//remove markdown images from text
@@ -102,16 +104,15 @@ export default class LanguageTranslator extends Plugin {
 				}
 				let textForSpeech = lines[i];
 
-
 				//if the line is all English words, set code to en
 				textForSpeech = this.cleanUpText(textForSpeech);
-
 
 				let nextCursor = {
 					line: cursor.line + i,
 					ch: 0,
 				};
-				editor.setCursor(nextCursor);
+				if(this.settings.followCursor)
+					editor.setCursor(nextCursor);
 				await getNextAudio(textForSpeech, this.settings.defaultLanguage);
 
 				this.cursor = null;
@@ -132,8 +133,8 @@ export default class LanguageTranslator extends Plugin {
 		await this.loadSettings();
 		// This adds an editor command that can perform some operation on the current editor instance
 		this.addCommand({
-			id: "editor-say-it-start-command",
-			name: "Speech: Speech the text",
+			id: "editor-speech-start-command",
+			name: "Speech: Speech the selection or the whole text",
 			editorCallback: this.StartSpeech,
 			hotkeys: [
 				{
@@ -144,8 +145,8 @@ export default class LanguageTranslator extends Plugin {
 		});
 
 		this.addCommand({
-			id: "editor-say-it-start-from-current-pos-command",
-			name: "Speech: Speech the text from current pos",
+			id: "editor-speech-start-from-current-pos-command",
+			name: "Speech: Speech from current pos",
 			editorCallback: this.SpeechFromCurrentLine,
 			hotkeys: [
 				{
@@ -156,7 +157,7 @@ export default class LanguageTranslator extends Plugin {
 		});
 
 		this.addCommand({
-			id: "editor-say-it-stop-command",
+			id: "editor-speech-stop-command",
 			name: "Speech: Cancel ongoin speech",
 			editorCallback: this.onCancelCallback,
 			hotkeys: [
@@ -191,6 +192,7 @@ class LanguageTranslatorSettingsTab extends PluginSettingTab {
 	constructor(app: App, plugin: LanguageTranslator) {
 		super(app, plugin);
 		this.plugin = plugin;
+		//FIXME: why window.speechSynthesis.getVoices() is not working at this point
 		this.allLanguages = [
 			'Microsoft David - English (United States)',
 			'Microsoft Mark - English (United States)',
@@ -205,11 +207,11 @@ class LanguageTranslatorSettingsTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "SayIt Settings" });
+		containerEl.createEl("h2", { text: "Speech Settings" });
 
 		new Setting(containerEl)
 			.setName("Default Language")
-			.setDesc("Set default language for speak out")
+			.setDesc("Set default language for speech")
 			.addDropdown((dropDown) => {
 				console.log(this.allLanguages);
 				this.allLanguages.forEach((el) => {
@@ -220,6 +222,20 @@ class LanguageTranslatorSettingsTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				});
 				dropDown.setValue(this.plugin.settings.defaultLanguage);
+			});
+
+		new Setting(containerEl)
+			.setName("Follow cursor")
+			.setDesc("Whether to follow cursor when speeching")
+			.addDropdown((dropDown) => {
+				["true", "false"].forEach((el) => {
+					dropDown.addOption(el, el);
+				});
+				dropDown.onChange(async (value) => {
+					this.plugin.settings.followCursor = value == "true";
+					await this.plugin.saveSettings();
+				});
+				dropDown.setValue(this.plugin.settings.followCursor ? "true" : "false");
 			});
 	}
 }

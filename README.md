@@ -1,6 +1,11 @@
 # Obsidian Speech Plugin
 
 If you want to do your best on writing, you should read your writing out loud.
+
+- You will find your voice.
+- You will find mistakes and unnecessary words and sentences.
+- You will make your writing easy for reading.
+
 This is a simple [Obsidian](https://obsidian.md) plugin to read your content.
 
 ## How to use

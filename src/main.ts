@@ -21,7 +21,6 @@ const DEFAULT_SETTINGS: LanguageTranslatorSettings = {
 
 
 async function getNextAudio(sentence: string, code: string) {
-	console.log(sentence);
 	let voice = speechSynthesis.getVoices().find(v => v.name == code);
 
 	let audio = new SpeechSynthesisUtterance(sentence);
@@ -45,7 +44,7 @@ export default class LanguageTranslator extends Plugin {
 	settings: LanguageTranslatorSettings;
 	token: string;
 	instance: SpeechSynthesisUtterance;
-	speaking: boolean = false;
+	startedTime: number = 0;
 	cursor: EditorPosition | null = null;
 
 	// cleanup text
@@ -70,9 +69,11 @@ export default class LanguageTranslator extends Plugin {
 		try {
 			let selection = editor.getSelection();
 			let cursor = editor.getCursor();
+			let currentPos = false;
 
 			// if no selection, use the whole text
 			if (selection.length === 0) {
+				currentPos = true;
 				if (this.cursor) {
 					let lastLine = editor.getLine(editor.lastLine());
 					let endEndCursor = { line: editor.lastLine(), ch: lastLine.length };
@@ -85,10 +86,14 @@ export default class LanguageTranslator extends Plugin {
 			}
 
 			let lines = selection.split('\n');
-			this.speaking = true;
+			if(this.startedTime != 0) {
+				this.onCancelCallback(editor);
+			}
+			let curTime = Date.now()
+			this.startedTime = curTime;
 
 			//try to fix cursor
-			if (lines.length > 0) {
+			if (lines.length > 0 && !currentPos) {
 				let line = lines[0];
 				let allLine = editor.getLine(cursor.line);
 				let cursorLine = editor.getRange(cursor, { line: cursor.line, ch: allLine.length }).replace(/\n/g, '');
@@ -99,8 +104,8 @@ export default class LanguageTranslator extends Plugin {
 			}
 
 			for (let i = 0; i < lines.length; i++) {
-				if (!this.speaking) {
-					continue;
+				if (this.startedTime != curTime) {
+					return;
 				}
 				let textForSpeech = lines[i];
 
@@ -113,10 +118,12 @@ export default class LanguageTranslator extends Plugin {
 				};
 				if(this.settings.followCursor)
 					editor.setCursor(nextCursor);
+				//console.log("reading: ", textForSpeech);
 				await getNextAudio(textForSpeech, this.settings.defaultLanguage);
 
 				this.cursor = null;
 			};
+			this.startedTime = 0;
 		} catch (err) {
 			console.log(err);
 			new Notice(err.message);
@@ -124,8 +131,7 @@ export default class LanguageTranslator extends Plugin {
 	};
 
 	onCancelCallback = async (editor: Editor) => {
-		console.log("cancel speak");
-		this.speaking = false;
+		this.startedTime = 0;
 		window.speechSynthesis.cancel();
 	}
 
@@ -134,7 +140,7 @@ export default class LanguageTranslator extends Plugin {
 		// This adds an editor command that can perform some operation on the current editor instance
 		this.addCommand({
 			id: "editor-speech-start-command",
-			name: "Speech: Speech the selection or the whole text",
+			name: "Speech: Speech the selection text or the whole text",
 			editorCallback: this.StartSpeech,
 			hotkeys: [
 				{
@@ -146,7 +152,7 @@ export default class LanguageTranslator extends Plugin {
 
 		this.addCommand({
 			id: "editor-speech-start-from-current-pos-command",
-			name: "Speech: Speech from current pos",
+			name: "Speech: Speech from current position",
 			editorCallback: this.SpeechFromCurrentLine,
 			hotkeys: [
 				{
@@ -158,7 +164,7 @@ export default class LanguageTranslator extends Plugin {
 
 		this.addCommand({
 			id: "editor-speech-stop-command",
-			name: "Speech: Cancel ongoin speech",
+			name: "Speech: Cancel the current speech",
 			editorCallback: this.onCancelCallback,
 			hotkeys: [
 				{
@@ -213,7 +219,7 @@ class LanguageTranslatorSettingsTab extends PluginSettingTab {
 			.setName("Default Language")
 			.setDesc("Set default language for speech")
 			.addDropdown((dropDown) => {
-				console.log(this.allLanguages);
+				//console.log(this.allLanguages);
 				this.allLanguages.forEach((el) => {
 					dropDown.addOption(el, el);
 				});
